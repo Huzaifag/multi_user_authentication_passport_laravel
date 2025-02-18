@@ -26,15 +26,36 @@ Modify the `AuthServiceProvider` class to load Passport routes:
 **File:** `app/Providers/AuthServiceProvider.php`
 
 ```php
+namespace App\Providers;
+
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Laravel\Passport\Passport;
 
-public function boot()
+class AuthServiceProvider extends ServiceProvider
 {
-    $this->registerPolicies();
+    /**
+     * The policy mappings for the application.
+     *
+     * @var array
+     */
+    protected $policies = [
+        // Register any model-policy mappings here
+        // 'App\Models\Model' => 'App\Policies\ModelPolicy',
+    ];
 
-    Passport::routes();
-    Passport::tokensExpireIn(now()->addDays(15));
-    Passport::refreshTokensExpireIn(now()->addDays(30));
+    /**
+     * Register any authentication / authorization services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        $this->registerPolicies(); // Correct location
+
+        Passport::routes();
+        Passport::tokensExpireIn(now()->addDays(15));
+        Passport::refreshTokensExpireIn(now()->addDays(30));
+    }
 }
 ```
 
@@ -66,7 +87,7 @@ php artisan migrate
 ## **4. Register Roles during User Creation**
 When registering users, set the `role` to `admin`, `manager`, or `employee`.
 
-For example, update the registration controller to accept a role:
+For example, update the registration and login controller to accept a role:
 
 ```php
 public function register(Request $request)
@@ -87,6 +108,54 @@ public function register(Request $request)
 
     return response()->json(['message' => 'User created successfully']);
 }
+public function login(Request $request)
+{
+    // Validate request
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required'
+    ]);
+
+    // Check if user exists
+    $user = User::where('email', $request->email)->first();
+
+    // Verify password
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'message' => 'Invalid email or password'
+        ], 401);
+    }
+
+    // Revoke previous tokens (optional)
+    $user->tokens()->delete();
+
+    // Generate access token
+    $token = $user->createToken('auth_token')->accessToken;
+
+    // Determine the message based on the user's role
+    $roleMessage = '';
+    switch ($user->role) {
+        case 'admin':
+            $roleMessage = 'Admin login successful';
+            break;
+        case 'manager':
+            $roleMessage = 'Manager login successful';
+            break;
+        case 'user':
+            $roleMessage = 'User login successful';
+            break;
+        default:
+            $roleMessage = 'Login successful';
+    }
+
+    // Return success response with role message
+    return response()->json([
+        'message' => $roleMessage,
+        'token' => $token,
+        'user' => $user
+    ]);
+}
+
 ```
 
 ---
