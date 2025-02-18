@@ -15,13 +15,15 @@ use App\Http\Controllers\API\UserController;
 |
 */
 
-Route::post('register', [UserController::class, 'register']);
-Route::post('login', [UserController::class, 'login']);
 
+// Public routes
+Route::post('register', [UserController::class, 'register'])->name('register');
+Route::post('login', [UserController::class, 'login'])->name('login');
 
-
-Route::middleware('auth:api')->group(function () {
-    Route::get('/admin/dashboard', [UserController::class, 'adminDashboard'])->middleware('admin');
-    Route::get('/manager/dashboard', [UserController::class, 'managerDashboard'])->middleware('manager');
-    Route::get('/employee/dashboard', [UserController::class, 'employeeDashboard'])->middleware('employee');
+// Protected routes
+Route::middleware('auth:api')->prefix('dashboard')->name('dashboard.')->group(function () {
+    Route::get('admin', [UserController::class, 'adminDashboard'])->middleware('admin')->name('admin');
+    Route::get('manager', [UserController::class, 'managerDashboard'])->middleware('manager')->name('manager');
+    Route::get('employee', [UserController::class, 'employeeDashboard'])->middleware('employee')->name('employee');
 });
+
